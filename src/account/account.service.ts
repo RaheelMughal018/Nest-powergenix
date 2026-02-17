@@ -432,15 +432,17 @@ export class AccountService {
   }
 
   /**
-   * Create a ledger entry for an account transaction
-   * This method should be called whenever money is added or removed from an account
+   * Create a ledger entry for an account transaction.
+   * Called when money moves in/out of an account (payments, purchase invoices, or expenses).
+   * Expenses are separate from invoices: use expense_id only for expense flows; use
+   * purchase_invoice_id only for purchase-invoice flows.
    *
    * @param accountId - The account ID
    * @param transactionType - CREDIT (money in) or DEBIT (money out)
    * @param amount - Transaction amount
    * @param description - Transaction description
-   * @param referenceNumber - Optional reference number (invoice, payment, etc.)
-   * @param relatedData - Optional related transaction data (payment_id, purchase_invoice_id, etc.)
+   * @param referenceNumber - Optional reference (e.g. payment number)
+   * @param relatedData - Link to source: payment_id, purchase_invoice_id, or expense_id (mutually exclusive by flow)
    */
   async createLedgerEntry(
     accountId: number,
@@ -451,6 +453,7 @@ export class AccountService {
     relatedData?: {
       payment_id?: number;
       purchase_invoice_id?: number;
+      expense_id?: number;
     },
   ): Promise<void> {
     this.logger.log(`Creating ledger entry for account ${accountId}: ${transactionType} ${amount}`);
@@ -484,6 +487,7 @@ export class AccountService {
           reference_number: referenceNumber,
           payment_id: relatedData?.payment_id,
           purchase_invoice_id: relatedData?.purchase_invoice_id,
+          expense_id: relatedData?.expense_id,
         },
       });
 

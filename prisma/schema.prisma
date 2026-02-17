@@ -61,6 +61,7 @@ model User {
   purchase_invoices PurchaseInvoice[]
   payments          Payment[]
   productions       Production[]
+  expenses          Expense[]
 
   @@index([email])
   @@map("users")
@@ -175,6 +176,7 @@ model Account {
 
   payments       Payment[]
   ledger_entries LedgerEntry[]
+  expenses       Expense[]
 
   @@map("accounts")
 }
@@ -269,6 +271,8 @@ model LedgerEntry {
   purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
   payment_id          Int?
   payment             Payment?         @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+  expense_id          Int?
+  expense             Expense?          @relation(fields: [expense_id], references: [id], onDelete: SetNull)
   created_at          DateTime         @default(now()) @db.Timestamp(6)
 
   @@index([supplier_id])
@@ -398,4 +402,40 @@ model ProductionItem {
   @@index([item_id])
   @@index([serial_number])
   @@map("production_items")
+}
+
+
+model ExpenseCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id            Int             @id @default(autoincrement())
+  category_id   Int
+  category      ExpenseCategory @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  account_id    Int
+  account       Account         @relation(fields: [account_id], references: [id], onDelete: Restrict)
+  admin_id      Int
+  admin         User            @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  amount        Decimal         @db.Decimal(15, 2)
+  description   String
+  expense_date  DateTime        @default(now())
+  notes         String?
+  receipt_image String?
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+
+  // Relations
+  ledger_entries LedgerEntry[]
+
+  @@map("expenses")
 }
