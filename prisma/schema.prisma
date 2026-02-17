@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,14 +16,12 @@ enum ItemType {
   FINAL
 }
 
-
 enum AccountType {
   BANK
   JAZZCASH
   EASYPAISA
   IN_HAND
 }
-
 
 enum PaymentStatus {
   PAID
@@ -45,7 +40,11 @@ enum TransactionType {
   DEBIT
 }
 
-
+enum ProductionStatus {
+  DRAFT
+  IN_PROCESS
+  DONE
+}
 
 model User {
   id         Int      @id @default(autoincrement())
@@ -58,10 +57,11 @@ model User {
   created_at DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updated_at DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  // Relations
   stock_adjustments StockAdjustment[]
   purchase_invoices PurchaseInvoice[]
-  payments          Payment[] 
+  payments          Payment[]
+  productions       Production[]
+
   @@index([email])
   @@map("users")
 }
@@ -80,6 +80,7 @@ model Supplier {
   purchase_invoices PurchaseInvoice[]
   payments          Payment[]
   ledger_entries    LedgerEntry[]
+
   @@map("suppliers")
 }
 
@@ -92,24 +93,23 @@ model Customer {
   opening_balance Decimal  @default(0) @map("opening_balance") @db.Decimal(15, 2)
   current_balance Decimal  @default(0) @map("current_balance") @db.Decimal(15, 2)
   created_at      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updated_at      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updated_at      DateTime @updatedAt @db.Timestamp(6)
 
   ledger_entries LedgerEntry[]
+
   @@map("customers")
 }
 
 model Category {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(100)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(100)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  // Relations
   items Item[]
 
   @@map("categories")
 }
-
 
 model Item {
   id          Int      @id @default(autoincrement())
@@ -123,15 +123,22 @@ model Item {
   updated_at  DateTime @updatedAt
 
   // Relations
-  stock_adjustments StockAdjustment[]
+  stock_adjustments      StockAdjustment[]
   purchase_invoice_items PurchaseInvoiceItem[]
-  // Unique constraint: item name must be unique within a category
+
+  // Recipe relations
+  recipe             Recipe?            @relation("RecipeFinalProduct")
+  recipe_ingredients RecipeIngredient[] @relation("RecipeIngredientItem")
+
+  // Production relations
+  production_items       ProductionItem[]       @relation("ProductionFinalItem")
+  production_ingredients ProductionIngredient[] @relation("ProductionIngredientItem")
+
   @@unique([category_id, name])
   @@index([category_id])
   @@index([item_type])
   @@map("items")
 }
-
 
 model StockAdjustment {
   id              Int      @id @default(autoincrement())
@@ -146,28 +153,28 @@ model StockAdjustment {
   adjustment_date DateTime @default(now())
   created_at      DateTime @default(now())
 
-  // Optional: Link to purchase invoice
   purchase_invoice_id Int?
   purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
 
+  production_id Int?
+  production    Production? @relation(fields: [production_id], references: [id], onDelete: SetNull)
+
   @@map("stock_adjustments")
 }
-
 
 model Account {
   id              Int         @id @default(autoincrement())
   name            String      @db.VarChar(100)
   account_type    AccountType
-  account_number  String?     @db.VarChar(50)  // Bank account number
-  bank_name       String?     @db.VarChar(100) // For BANK type
+  account_number  String?     @db.VarChar(50)
+  bank_name       String?     @db.VarChar(100)
   opening_balance Decimal     @default(0) @db.Decimal(15, 2)
   current_balance Decimal     @default(0) @db.Decimal(15, 2)
   created_at      DateTime    @default(now()) @db.Timestamp(6)
   updated_at      DateTime    @updatedAt @db.Timestamp(6)
 
-  // Relations
-  payments        Payment[]
-  ledger_entries  LedgerEntry[]
+  payments       Payment[]
+  ledger_entries LedgerEntry[]
 
   @@map("accounts")
 }
@@ -191,7 +198,6 @@ model PurchaseInvoice {
   created_at     DateTime      @default(now()) @db.Timestamp(6)
   updated_at     DateTime      @updatedAt @db.Timestamp(6)
 
-  // Relations
   items             PurchaseInvoiceItem[]
   payments          Payment[]
   stock_adjustments StockAdjustment[]
@@ -207,14 +213,11 @@ model PurchaseInvoiceItem {
   id                  Int             @id @default(autoincrement())
   purchase_invoice_id Int
   purchase_invoice    PurchaseInvoice @relation(fields: [purchase_invoice_id], references: [id], onDelete: Cascade)
-  
   item_id             Int
   item                Item            @relation(fields: [item_id], references: [id], onDelete: Restrict)
-  
   quantity            Decimal         @db.Decimal(15, 3)
   unit_price          Decimal         @db.Decimal(15, 2)
   total_price         Decimal         @db.Decimal(15, 2)
-  
   created_at          DateTime        @default(now()) @db.Timestamp(6)
 
   @@index([purchase_invoice_id])
@@ -225,29 +228,21 @@ model PurchaseInvoiceItem {
 model Payment {
   id                  Int              @id @default(autoincrement())
   payment_number      String           @unique @db.VarChar(50)
-  
   supplier_id         Int
   supplier            Supplier         @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
-  
   account_id          Int
   account             Account          @relation(fields: [account_id], references: [id], onDelete: Restrict)
-  
   admin_id            Int
   admin               User             @relation(fields: [admin_id], references: [id], onDelete: Restrict)
-  
   amount              Decimal          @db.Decimal(15, 2)
   payment_date        DateTime         @default(now()) @db.Timestamp(6)
-  
   purchase_invoice_id Int?
   purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
-  
   notes               String?
-  
   created_at          DateTime         @default(now()) @db.Timestamp(6)
   updated_at          DateTime         @updatedAt @db.Timestamp(6)
 
-  // Relations
-  ledger_entries      LedgerEntry[]
+  ledger_entries LedgerEntry[]
 
   @@index([supplier_id])
   @@index([account_id])
@@ -256,45 +251,151 @@ model Payment {
 }
 
 model LedgerEntry {
-  id                  Int               @id @default(autoincrement())
+  id                  Int              @id @default(autoincrement())
   entity_type         LedgerEntityType
-  
   supplier_id         Int?
-  supplier            Supplier?         @relation(fields: [supplier_id], references: [id], onDelete: Cascade)
-  
+  supplier            Supplier?        @relation(fields: [supplier_id], references: [id], onDelete: Cascade)
   customer_id         Int?
-  customer            Customer?         @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  
+  customer            Customer?        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
   account_id          Int?
-  account             Account?          @relation(fields: [account_id], references: [id], onDelete: Cascade)
-  
+  account             Account?         @relation(fields: [account_id], references: [id], onDelete: Cascade)
   transaction_type    TransactionType
-  amount              Decimal           @db.Decimal(15, 2)
-  balance             Decimal           @db.Decimal(15, 2)
+  amount              Decimal          @db.Decimal(15, 2)
+  balance             Decimal          @db.Decimal(15, 2)
   description         String
-  reference_number    String?           @db.VarChar(50)
-  transaction_date    DateTime          @default(now()) @db.Timestamp(6)
-  
+  reference_number    String?          @db.VarChar(50)
+  transaction_date    DateTime         @default(now()) @db.Timestamp(6)
   purchase_invoice_id Int?
-  purchase_invoice    PurchaseInvoice?  @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
-  
-  // sale_invoice_id     Int?
-  // sale_invoice        SaleInvoice?      @relation(fields: [sale_invoice_id], references: [id], onDelete: SetNull)
-  
+  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
   payment_id          Int?
-  payment             Payment?          @relation(fields: [payment_id], references: [id], onDelete: SetNull)
-  
-  // receipt_id          Int?
-  // receipt             Receipt?          @relation(fields: [receipt_id], references: [id], onDelete: SetNull)
-  
-  // expense_id          Int?
-  // expense             Expense?          @relation(fields: [expense_id], references: [id], onDelete: SetNull)
-  
-  created_at          DateTime          @default(now()) @db.Timestamp(6)
+  payment             Payment?         @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+  created_at          DateTime         @default(now()) @db.Timestamp(6)
 
   @@index([supplier_id])
   @@index([customer_id])
   @@index([account_id])
   @@index([transaction_date])
   @@map("ledger_entries")
+}
+
+// ============================================
+// RECIPE MODULE
+// ============================================
+
+model Recipe {
+  id               Int      @id @default(autoincrement())
+  final_product_id Int      @unique
+  final_product    Item     @relation("RecipeFinalProduct", fields: [final_product_id], references: [id], onDelete: Restrict)
+  name             String   @db.VarChar(255)
+  description      String?
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+  updated_at       DateTime @updatedAt @db.Timestamp(6)
+
+  ingredients RecipeIngredient[]
+  productions Production[]
+
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id        Int     @id @default(autoincrement())
+  recipe_id Int
+  recipe    Recipe  @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
+  item_id   Int
+  item      Item    @relation("RecipeIngredientItem", fields: [item_id], references: [id], onDelete: Restrict)
+  // Base quantity per unit of final product
+  quantity   Decimal  @db.Decimal(15, 3)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  // One item can only appear once per recipe
+  @@unique([recipe_id, item_id])
+  @@index([recipe_id])
+  @@index([item_id])
+  @@map("recipe_ingredients")
+}
+
+// ============================================
+// PRODUCTION MODULE
+// ============================================
+
+model Production {
+  id           Int              @id @default(autoincrement())
+  batch_number String           @unique @db.VarChar(50)
+  recipe_id    Int
+  recipe       Recipe           @relation(fields: [recipe_id], references: [id], onDelete: Restrict)
+  admin_id     Int
+  admin        User             @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  quantity     Int
+  status       ProductionStatus @default(DRAFT)
+
+  // Locked when production moves to DONE
+  total_cost    Decimal @default(0) @db.Decimal(15, 2)
+  cost_per_unit Decimal @default(0) @db.Decimal(15, 2)
+
+  start_date      DateTime? @db.Timestamp(6)
+  completion_date DateTime? @db.Timestamp(6)
+  notes           String?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  // Production-level ingredient overrides
+  // Copied from recipe at creation, modifiable until DONE
+  production_ingredients ProductionIngredient[]
+  production_items       ProductionItem[]
+  stock_adjustments      StockAdjustment[]
+
+  @@index([recipe_id])
+  @@index([status])
+  @@map("productions")
+}
+
+model ProductionIngredient {
+  id            Int        @id @default(autoincrement())
+  production_id Int
+  production    Production @relation(fields: [production_id], references: [id], onDelete: Cascade)
+  item_id       Int
+  item          Item       @relation("ProductionIngredientItem", fields: [item_id], references: [id], onDelete: Restrict)
+
+  // Quantity per unit of final product
+  // (total consumed = quantity × production.quantity)
+  quantity Decimal @db.Decimal(15, 3)
+
+  // Was this copied from recipe or manually added?
+  is_from_recipe Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  // One item can only appear once per production
+  @@unique([production_id, item_id])
+  @@index([production_id])
+  @@index([item_id])
+  @@map("production_ingredients")
+}
+
+model ProductionItem {
+  id            Int        @id @default(autoincrement())
+  production_id Int
+  production    Production @relation(fields: [production_id], references: [id], onDelete: Cascade)
+  item_id       Int
+  item          Item       @relation("ProductionFinalItem", fields: [item_id], references: [id], onDelete: Restrict)
+
+  // Unique serial number for each physical unit
+  serial_number String @unique @db.VarChar(100)
+
+  // Cost locked at production completion time - NEVER changes
+  cost_price Decimal @db.Decimal(15, 2)
+
+  // Tracks if this unit has been sold
+  is_sold Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([production_id])
+  @@index([item_id])
+  @@index([serial_number])
+  @@map("production_items")
 }

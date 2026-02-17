@@ -11,6 +11,8 @@ import { ItemModule } from './item/item.module';
 import { AccountModule } from './account/account.module';
 import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.module';
 import { PaymentModule } from './payment/payment.module';
+import { RecipeModule } from './recipe/recipe.module';
+import { ProductionModule } from './production/production.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { DatabaseModule } from './common/database/database.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -42,6 +44,8 @@ import securityConfig from './config/security.config';
     AccountModule,
     PurchaseInvoiceModule,
     PaymentModule,
+    RecipeModule,
+    ProductionModule,
   ],
   controllers: [AppController],
   providers: [
