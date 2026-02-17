@@ -16,6 +16,11 @@ enum ItemType {
   FINAL
 }
 
+enum UnitType {
+  PCS
+  SET
+}
+
 enum AccountType {
   BANK
   JAZZCASH
@@ -116,6 +121,7 @@ model Item {
   id          Int      @id @default(autoincrement())
   name        String   @db.VarChar(255)
   item_type   ItemType
+  unit_type   UnitType @default(PCS)
   category_id Int
   category    Category @relation(fields: [category_id], references: [id], onDelete: Restrict)
   quantity    Decimal  @default(0) @db.Decimal(15, 3)

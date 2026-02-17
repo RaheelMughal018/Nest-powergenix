@@ -60,6 +60,7 @@ export class ItemService {
       data: {
         name: trimmedName,
         item_type: createItemDto.item_type,
+        unit_type: createItemDto.unit_type,
         category_id: createItemDto.category_id,
         quantity: 0,
         avg_price: 0,

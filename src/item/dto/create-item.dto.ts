@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsEnum, IsInt, IsString, MaxLength, Min, MinLength, IsNotEmpty } from 'class-validator';
-import { ItemType } from '@prisma/client';
+import { ItemType, UnitType } from '@prisma/client';
 
 export class CreateItemDto {
   @ApiProperty({ 
@@ -22,6 +22,14 @@ export class CreateItemDto {
   })
   @IsEnum(ItemType, { message: 'Item type must be either RAW or FINAL' })
   item_type: ItemType;
+
+  @ApiProperty({ 
+    enum: UnitType, 
+    example: UnitType.PCS, 
+    description: 'Unit type: PCS (pieces) or SET. Defaults to PCS.' 
+  })
+  @IsEnum(UnitType, { message: 'Unit type must be either PCS or SET' })
+  unit_type: UnitType;
 
   @ApiProperty({ 
     example: 1, 

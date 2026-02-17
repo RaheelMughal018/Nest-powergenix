@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ItemType } from '@prisma/client';
+import { ItemType, UnitType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 export class ItemResponseDto {
@@ -11,6 +11,9 @@ export class ItemResponseDto {
 
   @ApiProperty({ enum: ItemType, example: ItemType.RAW })
   item_type: ItemType;
+
+  @ApiProperty({ enum: UnitType, example: UnitType.PCS })
+  unit_type: UnitType;
 
   @ApiProperty({ example: 1 })
   category_id: number;
