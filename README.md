@@ -150,6 +150,45 @@ The API will be available at:
 - **API**: http://localhost:3333/api
 - **Swagger Docs**: http://localhost:3333/api/docs
 
+## Deploy to Railway
+
+This project is configured for [Railway](https://railway.app). Both the app and PostgreSQL can run on Railway.
+
+### 1. Create a Railway project
+
+1. Go to [railway.app](https://railway.app) and sign in.
+2. **New Project** → **Deploy from GitHub repo** (or push this repo and connect it).
+3. Add **PostgreSQL** from the same project: **+ New** → **Database** → **PostgreSQL**. Railway will set `DATABASE_URL` automatically.
+
+### 2. Configure the service
+
+- **Build command:** `npm run build` (runs `prisma generate` + `nest build`).
+- **Start command:** `prisma migrate deploy && npm run start:prod` (already set in `railway.toml`).
+- **Root directory:** leave default (project root).
+
+### 3. Environment variables
+
+In the service **Variables** tab, set (Railway sets `PORT` and `DATABASE_URL` for you):
+
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `DATABASE_URL` | Yes | Set automatically when you add PostgreSQL and link the service. |
+| `PORT` | No | Set by Railway. |
+| `NODE_ENV` | No | Set to `production` in production. |
+| `JWT_SECRET` | Yes | Strong secret for access tokens. |
+| `JWT_REFRESH_SECRET` | Yes | Strong secret for refresh tokens. |
+| `APP_URL` | No | Your app URL (e.g. `https://your-app.up.railway.app`) for CORS/docs. |
+
+Generate strong secrets for production, e.g.:
+
+```bash
+openssl rand -base64 32
+```
+
+### 4. Deploy
+
+Push to your connected branch; Railway will build and deploy. Migrations run on each deploy via the start command. After deploy, open the generated URL (e.g. `https://your-service.up.railway.app`). API base: `/api/v1`, Swagger: `/api/docs` or `/docs` (see `SWAGGER_PATH`).
+
 ## 📁 Project Structure
 
 ```
