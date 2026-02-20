@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install all deps (including devDependencies for build)
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY prisma ./prisma/
 RUN npx prisma generate
@@ -22,7 +22,7 @@ ENV NODE_ENV=production
 
 # Production deps only
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Prisma schema + migrations + generated client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
