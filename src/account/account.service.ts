@@ -461,16 +461,25 @@ export class AccountService {
     // Get current balance
     const currentBalance = await this.getAccountBalance(accountId);
 
+    // For DEBIT (money out): ensure account has sufficient balance
+    if (transactionType === TransactionType.DEBIT) {
+      if (amount > currentBalance) {
+        throw new BadRequestException(
+          `Payment amount (${amount}) exceeds account available balance (${currentBalance})`,
+        );
+      }
+    }
+
     // Calculate new balance
     const newBalance =
       transactionType === TransactionType.CREDIT
         ? currentBalance + amount
         : currentBalance - amount;
 
-    // Edge case: Prevent negative balance
+    // Prevent negative balance (safety net)
     if (newBalance < 0) {
       throw new BadRequestException(
-        'Insufficient funds. Transaction would result in negative balance.',
+        'Insufficient funds. Transaction would result in negative account balance.',
       );
     }
 

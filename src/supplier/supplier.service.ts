@@ -98,19 +98,43 @@ export class SupplierService {
     return { message: 'Supplier deleted successfully' };
   }
 
-  async getStatement(id: number): Promise<SupplierStatementDto> {
+  async getStatement(id: number, fromDate?: string, toDate?: string): Promise<SupplierStatementDto> {
     // Verify supplier exists
     const supplier = await this.findOne(id);
 
-    // Fetch all purchase invoices for this supplier
+    // Build date filter for invoices
+    const invoiceDateFilter: any = { supplier_id: id };
+    if (fromDate || toDate) {
+      invoiceDateFilter.invoice_date = {};
+      if (fromDate) {
+        invoiceDateFilter.invoice_date.gte = new Date(fromDate);
+      }
+      if (toDate) {
+        invoiceDateFilter.invoice_date.lte = new Date(toDate);
+      }
+    }
+
+    // Build date filter for payments
+    const paymentDateFilter: any = { supplier_id: id };
+    if (fromDate || toDate) {
+      paymentDateFilter.payment_date = {};
+      if (fromDate) {
+        paymentDateFilter.payment_date.gte = new Date(fromDate);
+      }
+      if (toDate) {
+        paymentDateFilter.payment_date.lte = new Date(toDate);
+      }
+    }
+
+    // Fetch purchase invoices for this supplier (filtered by date if provided)
     const invoices = await this.prisma.purchaseInvoice.findMany({
-      where: { supplier_id: id },
+      where: invoiceDateFilter,
       orderBy: { invoice_date: 'desc' },
     });
 
-    // Fetch all payments for this supplier
+    // Fetch payments for this supplier (filtered by date if provided)
     const payments = await this.prisma.payment.findMany({
-      where: { supplier_id: id },
+      where: paymentDateFilter,
       include: {
         account: {
           select: { name: true },

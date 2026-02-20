@@ -74,6 +74,14 @@ export class PaymentService {
       throw new BadRequestException('Payment amount must be greater than 0');
     }
 
+    // Check if payment amount exceeds account current balance
+    const accountBalance = new Decimal(account.current_balance.toString());
+    if (new Decimal(dto.amount).gt(accountBalance)) {
+      throw new BadRequestException(
+        `Payment amount (${dto.amount}) exceeds account available balance (${account.current_balance.toString()})`,
+      );
+    }
+    
     // Check if supplier has outstanding balance
     if (supplier.current_balance.isZero()) {
       throw new BadRequestException(

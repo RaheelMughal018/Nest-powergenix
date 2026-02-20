@@ -48,9 +48,10 @@ export class SupplierController {
   @Get(':id/statement')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get supplier statement',
+    summary: 'Get supplier statement with optional date range',
     description:
-      'Get complete supplier statement including all purchase invoices, payments, and outstanding balance',
+      'Get complete supplier statement including all purchase invoices, payments, and outstanding balance. ' +
+      'Optionally filter by date range using from_date and to_date query parameters.',
   })
   @ApiParam({
     name: 'id',
@@ -64,8 +65,12 @@ export class SupplierController {
     type: SupplierStatementDto,
   })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Supplier not found' })
-  getStatement(@Param('id', ParseIntPipe) id: number): Promise<SupplierStatementDto> {
-    return this.supplierService.getStatement(id);
+  getStatement(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('from_date') fromDate?: string,
+    @Query('to_date') toDate?: string,
+  ): Promise<SupplierStatementDto> {
+    return this.supplierService.getStatement(id, fromDate, toDate);
   }
 
   @Get(':id')

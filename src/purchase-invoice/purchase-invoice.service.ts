@@ -141,10 +141,12 @@ export class PurchaseInvoiceService {
       throw new NotFoundException('Supplier not found');
     }
 
-    // Verify account exists if payment is being made
+    // Verify account exists if payment is being made (validated again with balance below when paidAmount > 0)
+    let account: { id: number; current_balance: Decimal } | null = null;
     if (dto.account_id) {
-      const account = await this.prisma.account.findUnique({
+      account = await this.prisma.account.findUnique({
         where: { id: dto.account_id },
+        select: { id: true, current_balance: true },
       });
       if (!account) {
         throw new NotFoundException('Account not found');
@@ -183,6 +185,13 @@ export class PurchaseInvoiceService {
     ) {
       throw new BadRequestException(
         'paid_amount must be greater than 0 and less than total_amount for PARTIAL status',
+      );
+    }
+
+    // Payment must not exceed account available balance
+    if (account && paidAmount > 0 && new Decimal(paidAmount).gt(account.current_balance)) {
+      throw new BadRequestException(
+        `Payment amount (${paidAmount}) exceeds account available balance (${account.current_balance})`,
       );
     }
 
