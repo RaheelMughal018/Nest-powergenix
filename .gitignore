@@ -42,8 +42,8 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
-# Prisma
-prisma/migrations
+# Prisma (keep migrations committed for deploy)
+# prisma/migrations
 
 # temp directory
 .temp

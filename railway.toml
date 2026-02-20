@@ -1,11 +1,7 @@
 # Railway deployment config
 # https://docs.railway.com/config-as-code
-
-[build]
-builder = "nixpacks"
-buildCommand = "npm run build"
+# Uses Dockerfile when present; start is handled by Dockerfile CMD.
 
 [deploy]
-startCommand = "prisma migrate deploy && npm run start:prod"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
