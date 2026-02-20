@@ -20,10 +20,6 @@ export class RecipeService {
     this.logger.setContext('RecipeService');
   }
 
-  /**
-   * Create a recipe for a FINAL product (blueprint).
-   * All ingredients must be RAW items. Cost is calculated dynamically at read/completion time.
-   */
   async create(dto: CreateRecipeDto) {
     const item = await this.prisma.item.findUnique({
       where: { id: dto.final_product_id },
@@ -141,9 +137,6 @@ export class RecipeService {
     return recipe;
   }
 
-  /**
-   * Dynamic cost per unit = sum(ingredient.quantity × current item.avg_price).
-   */
   async getCostPerUnit(id: number): Promise<{
     cost_per_unit: number;
     breakdown: Array<{
@@ -184,21 +177,9 @@ export class RecipeService {
     };
   }
 
-  /** Recipe can only be edited if no production is DONE yet (blueprint rule). */
-  private async ensureRecipeEditable(recipeId: number, recipeName: string) {
-    const doneCount = await this.prisma.production.count({
-      where: { recipe_id: recipeId, status: 'DONE' },
-    });
-    if (doneCount > 0) {
-      throw new ConflictException(
-        `Cannot edit recipe "${recipeName}" because ${doneCount} production batch(es) are already DONE. Recipe is a permanent blueprint once production completes.`,
-      );
-    }
-  }
-
+  // Recipe is a free blueprint — always editable, no production status checks
   async update(id: number, dto: UpdateRecipeDto) {
     const recipe = await this.findOne(id);
-    await this.ensureRecipeEditable(id, recipe.name);
 
     if (dto.ingredients !== undefined) {
       const itemIds = dto.ingredients.map((i) => i.item_id);
@@ -250,14 +231,20 @@ export class RecipeService {
     return this.findOne(id);
   }
 
+  // Only block deletion if productions are IN_PROCESS or DONE
+  // DRAFT productions are fine — no stock has been touched
   async remove(id: number) {
     const recipe = await this.findOne(id);
-    const productionCount = await this.prisma.production.count({
-      where: { recipe_id: id },
+
+    const activeProductionCount = await this.prisma.production.count({
+      where: {
+        recipe_id: id,
+        status: { in: ['IN_PROCESS', 'DONE'] },
+      },
     });
-    if (productionCount > 0) {
+    if (activeProductionCount > 0) {
       throw new ConflictException(
-        `Cannot delete recipe "${recipe.name}" because ${productionCount} production batch(es) use it.`,
+        `Cannot delete recipe "${recipe.name}" because ${activeProductionCount} production batch(es) are IN_PROCESS or DONE.`,
       );
     }
 
@@ -266,9 +253,10 @@ export class RecipeService {
     return { message: 'Recipe deleted successfully' };
   }
 
+  // No ensureRecipeEditable — recipe is always editable
   async addIngredient(recipeId: number, itemId: number, quantity: number) {
     const recipe = await this.findOne(recipeId);
-    await this.ensureRecipeEditable(recipeId, recipe.name);
+
     if (recipe.final_product_id === itemId) {
       throw new BadRequestException('Final product cannot be an ingredient of itself');
     }
@@ -295,9 +283,10 @@ export class RecipeService {
     return this.findOne(recipeId);
   }
 
+  // No ensureRecipeEditable — recipe is always editable
   async updateIngredient(recipeId: number, itemId: number, quantity: number) {
     const recipe = await this.findOne(recipeId);
-    await this.ensureRecipeEditable(recipeId, recipe.name);
+
     const existing = await this.prisma.recipeIngredient.findUnique({
       where: { recipe_id_item_id: { recipe_id: recipeId, item_id: itemId } },
       include: { item: { select: { name: true } } },
@@ -313,9 +302,10 @@ export class RecipeService {
     return this.findOne(recipeId);
   }
 
+  // No ensureRecipeEditable — recipe is always editable
   async removeIngredient(recipeId: number, itemId: number) {
     const recipe = await this.findOne(recipeId);
-    await this.ensureRecipeEditable(recipeId, recipe.name);
+
     const existing = await this.prisma.recipeIngredient.findUnique({
       where: { recipe_id_item_id: { recipe_id: recipeId, item_id: itemId } },
       include: { item: { select: { name: true } } },
