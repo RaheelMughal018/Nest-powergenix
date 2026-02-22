@@ -19,10 +19,16 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> 
     const statusCode = response.statusCode;
 
     return next.handle().pipe(
-      map((data: T & { message?: string; data?: T }) => ({
+      map((data: T & { message?: string; data?: T; meta?: unknown }) => ({
         statusCode,
         message: data?.message || 'Success',
-        data: data?.data !== undefined ? data.data : data,
+        // Keep full payload for paginated responses (data + meta); otherwise unwrap data if present
+        data:
+          data?.meta !== undefined
+            ? data
+            : data?.data !== undefined
+              ? data.data
+              : data,
       })),
     );
   }
