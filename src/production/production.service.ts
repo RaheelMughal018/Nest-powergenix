@@ -121,6 +121,57 @@ export class ProductionService {
     return production;
   }
 
+  /**
+   * Get a final product (production unit) by its unique serial number.
+   * Used for lookup when selling or tracking individual units.
+   */
+  async findBySerialNumber(serialNumber: string) {
+    const trimmed = serialNumber?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Serial number is required');
+    }
+    const productionItem = await this.prisma.productionItem.findUnique({
+      where: { serial_number: trimmed },
+      include: {
+        item: {
+          select: {
+            id: true,
+            name: true,
+            item_type: true,
+            unit_type: true,
+            category_id: true,
+            category: { select: { id: true, name: true } },
+          },
+        },
+        production: {
+          select: {
+            id: true,
+            batch_number: true,
+            completion_date: true,
+            recipe: { select: { name: true } },
+          },
+        },
+      },
+    });
+    if (!productionItem) {
+      throw new NotFoundException(`No final product found with serial number "${trimmed}"`);
+    }
+    return {
+      id: productionItem.id,
+      serial_number: productionItem.serial_number,
+      cost_price: productionItem.cost_price,
+      is_sold: productionItem.is_sold,
+      created_at: productionItem.created_at,
+      item: productionItem.item,
+      production: {
+        id: productionItem.production.id,
+        batch_number: productionItem.production.batch_number,
+        completion_date: productionItem.production.completion_date,
+        recipe_name: productionItem.production.recipe.name,
+      },
+    };
+  }
+
   async update(id: number, dto: UpdateProductionDto) {
     const production = await this.findOne(id);
     if (production.status !== ProductionStatus.DRAFT) {

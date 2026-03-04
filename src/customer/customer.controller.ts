@@ -11,13 +11,14 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { CustomerResponseDto } from './dto/customer-response.dto';
+import { CustomerStatementDto } from './dto/customer-statement.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { ApiPaginatedResponse } from '../common/decorators/api-paginated-response.decorator';
-import { CustomerResponseDto } from './dto/customer-response.dto';
 
 @ApiTags('Customers')
 @ApiBearerAuth('JWT-auth')
@@ -42,6 +43,34 @@ export class CustomerController {
   @ApiPaginatedResponse(CustomerResponseDto)
   findAll(@Query() paginationDto: PaginationDto) {
     return this.customerService.findAll(paginationDto);
+  }
+
+  @Get(':id/statement')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get customer statement with optional date range',
+    description:
+      'Get complete customer statement including all sale invoices, receipts, and outstanding balance. ' +
+      'Optionally filter by date range using from_date and to_date query parameters.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Customer ID',
+    type: Number,
+    example: 1,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Customer statement retrieved successfully',
+    type: CustomerStatementDto,
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Customer not found' })
+  getStatement(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('from_date') fromDate?: string,
+    @Query('to_date') toDate?: string,
+  ): Promise<CustomerStatementDto> {
+    return this.customerService.getStatement(id, fromDate, toDate);
   }
 
   @Get(':id')

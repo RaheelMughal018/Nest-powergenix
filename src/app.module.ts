@@ -10,6 +10,8 @@ import { CategoryModule } from './category/category.module';
 import { ItemModule } from './item/item.module';
 import { AccountModule } from './account/account.module';
 import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.module';
+import { SaleInvoiceModule } from './sale-invoice/sale-invoice.module';
+import { ReceiptModule } from './receipt/receipt.module';
 import { PaymentModule } from './payment/payment.module';
 import { RecipeModule } from './recipe/recipe.module';
 import { ProductionModule } from './production/production.module';
@@ -45,6 +47,8 @@ import securityConfig from './config/security.config';
     ItemModule,
     AccountModule,
     PurchaseInvoiceModule,
+    SaleInvoiceModule,
+    ReceiptModule,
     PaymentModule,
     RecipeModule,
     ProductionModule,

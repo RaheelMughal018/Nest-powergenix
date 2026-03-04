@@ -17,6 +17,7 @@ import { CreateProductionDto } from './dto/create-production.dto';
 import { UpdateProductionDto } from './dto/update-production.dto';
 import { UpdateProductionIngredientsDto } from './dto/update-production-ingredients.dto';
 import { CompleteProductionDto } from './dto/complete-production.dto';
+import { FinalProductBySerialResponseDto } from './dto/final-product-by-serial-response.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ProductionStatus } from '@prisma/client';
 
@@ -44,6 +45,22 @@ export class ProductionController {
   @ApiQuery({ name: 'status', enum: ProductionStatus, required: false })
   findAll(@Query('status') status?: ProductionStatus) {
     return this.productionService.findAll(status);
+  }
+
+  @Get('by-serial/:serial_number')
+  @ApiOperation({
+    summary: 'Get final product by serial number',
+    description:
+      'Look up a produced unit by its unique serial number. Returns the final product (item), unit cost, is_sold, and production batch info. Use for sales or tracking by serial.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Final product unit found',
+    type: FinalProductBySerialResponseDto,
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No product with this serial number' })
+  getBySerialNumber(@Param('serial_number') serial_number: string) {
+    return this.productionService.findBySerialNumber(serial_number);
   }
 
   @Get(':id')
@@ -102,7 +119,10 @@ export class ProductionController {
     description:
       'Provide one serial number per unit (e.g. 2 products → ["LEH-001", "LEH-007"]). Raw materials already deducted at start. Sets cost_per_unit and creates ProductionItems.',
   })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Not IN_PROCESS, wrong count, duplicates, or serial already in use' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Not IN_PROCESS, wrong count, duplicates, or serial already in use',
+  })
   complete(@Param('id', ParseIntPipe) id: number, @Body() body: CompleteProductionDto) {
     return this.productionService.complete(id, body.serialNumbers);
   }
