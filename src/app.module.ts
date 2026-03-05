@@ -15,6 +15,7 @@ import { ReceiptModule } from './receipt/receipt.module';
 import { PaymentModule } from './payment/payment.module';
 import { RecipeModule } from './recipe/recipe.module';
 import { ProductionModule } from './production/production.module';
+import { RepairInvoiceModule } from './repair-invoice/repair-invoice.module';
 import { ExpenseCategoryModule } from './expense-category/expense-category.module';
 import { ExpenseModule } from './expense/expense.module';
 import { LoggerModule } from './common/logger/logger.module';
@@ -52,6 +53,7 @@ import securityConfig from './config/security.config';
     PaymentModule,
     RecipeModule,
     ProductionModule,
+    RepairInvoiceModule,
     ExpenseCategoryModule,
     ExpenseModule,
   ],

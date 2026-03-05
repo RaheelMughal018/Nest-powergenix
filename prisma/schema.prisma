@@ -7,437 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                Int               @id @default(autoincrement())
-  email             String            @unique @db.VarChar(255)
-  password          String            @db.VarChar(255)
-  name              String            @db.VarChar(255)
-  phone             String?           @db.VarChar(50)
-  role              UserRole          @default(ADMIN)
-  is_active         Boolean           @default(true) @map("is_active")
-  created_at        DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
-  updated_at        DateTime          @updatedAt @map("updated_at") @db.Timestamp(6)
-  expenses          Expense[]
-  payments          Payment[]
-  productions       Production[]
-  purchase_invoices PurchaseInvoice[]
-  stock_adjustments StockAdjustment[]
-  sale_invoices     SaleInvoice[]
-  receipts          Receipt[]
-  @@index([email])
-  @@map("users")
-}
-
-model Supplier {
-  id                Int               @id @default(autoincrement())
-  name              String
-  company_name      String?           @map("company_name")
-  phone             String?
-  address           String?
-  opening_balance   Decimal           @default(0) @map("opening_balance") @db.Decimal(15, 2)
-  current_balance   Decimal           @default(0) @map("current_balance") @db.Decimal(15, 2)
-  created_at        DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
-  updated_at        DateTime          @updatedAt @map("updated_at") @db.Timestamp(6)
-  ledger_entries    LedgerEntry[]
-  payments          Payment[]
-  purchase_invoices PurchaseInvoice[]
-
-  @@map("suppliers")
-}
-
-model Customer {
-  id              Int           @id @default(autoincrement())
-  name            String
-  company_name    String?       @map("company_name")
-  phone           String?
-  address         String?
-  opening_balance Decimal       @default(0) @map("opening_balance") @db.Decimal(15, 2)
-  current_balance Decimal       @default(0) @map("current_balance") @db.Decimal(15, 2)
-  created_at      DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
-  updated_at      DateTime      @updatedAt @db.Timestamp(6)
-  ledger_entries  LedgerEntry[]
-  receipts       Receipt[]  
-  sale_invoices SaleInvoice[] 
-  @@map("customers")
-}
-
-model Category {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique @db.VarChar(100)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  items      Item[]
-
-  @@map("categories")
-}
-
-model Item {
-  id                     Int                    @id @default(autoincrement())
-  name                   String                 @db.VarChar(255)
-  item_type              ItemType
-  category_id            Int
-  quantity               Decimal                @default(0) @db.Decimal(15, 3)
-  avg_price              Decimal                @default(0) @db.Decimal(15, 2)
-  created_at             DateTime               @default(now())
-  updated_at             DateTime               @updatedAt
-  unit_type              UnitType               @default(PCS)
-  category               Category               @relation(fields: [category_id], references: [id])
-  production_ingredients ProductionIngredient[] @relation("ProductionIngredientItem")
-  production_items       ProductionItem[]       @relation("ProductionFinalItem")
-  purchase_invoice_items PurchaseInvoiceItem[]
-  recipe_ingredients     RecipeIngredient[]     @relation("RecipeIngredientItem")
-  recipe                 Recipe?                @relation("RecipeFinalProduct")
-  stock_adjustments      StockAdjustment[]
-  sale_invoice_items     SaleInvoiceItem[] 
-
-  @@unique([category_id, name])
-  @@index([category_id])
-  @@index([item_type])
-  @@map("items")
-}
-
-model StockAdjustment {
-  id                  Int              @id @default(autoincrement())
-  item_id             Int
-  admin_id            Int
-  quantity            Decimal          @db.Decimal(15, 3)
-  avg_price           Decimal          @db.Decimal(15, 2)
-  reason              String
-  notes               String?
-  adjustment_date     DateTime         @default(now())
-  created_at          DateTime         @default(now())
-  purchase_invoice_id Int?
-  production_id       Int?
-  admin               User             @relation(fields: [admin_id], references: [id])
-  item                Item             @relation(fields: [item_id], references: [id])
-  production          Production?      @relation(fields: [production_id], references: [id])
-  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id])
-
-  @@map("stock_adjustments")
-}
-
-model Account {
-  id              Int           @id @default(autoincrement())
-  name            String        @db.VarChar(100)
-  account_type    AccountType
-  account_number  String?       @db.VarChar(50)
-  bank_name       String?       @db.VarChar(100)
-  opening_balance Decimal       @default(0) @db.Decimal(15, 2)
-  current_balance Decimal       @default(0) @db.Decimal(15, 2)
-  created_at      DateTime      @default(now()) @db.Timestamp(6)
-  updated_at      DateTime      @updatedAt @db.Timestamp(6)
-  expenses        Expense[]
-  ledger_entries  LedgerEntry[]
-  payments        Payment[]
-  receipts       Receipt[]  
-
-  @@map("accounts")
-}
-
-model PurchaseInvoice {
-  id                Int                   @id @default(autoincrement())
-  invoice_number    String                @unique @db.VarChar(50)
-  supplier_id       Int
-  admin_id          Int
-  invoice_date      DateTime              @default(now()) @db.Timestamp(6)
-  due_date          DateTime?             @db.Timestamp(6)
-  subtotal          Decimal               @db.Decimal(15, 2)
-  tax               Decimal               @default(0) @db.Decimal(15, 2)
-  discount          Decimal               @default(0) @db.Decimal(15, 2)
-  total_amount      Decimal               @db.Decimal(15, 2)
-  paid_amount       Decimal               @default(0) @db.Decimal(15, 2)
-  payment_status    PaymentStatus         @default(UNPAID)
-  notes             String?
-  created_at        DateTime              @default(now()) @db.Timestamp(6)
-  updated_at        DateTime              @updatedAt @db.Timestamp(6)
-  ledger_entries    LedgerEntry[]
-  payments          Payment[]
-  items             PurchaseInvoiceItem[]
-  admin             User                  @relation(fields: [admin_id], references: [id])
-  supplier          Supplier              @relation(fields: [supplier_id], references: [id])
-  stock_adjustments StockAdjustment[]
-
-  @@index([supplier_id])
-  @@index([invoice_date])
-  @@index([payment_status])
-  @@map("purchase_invoices")
-}
-
-model PurchaseInvoiceItem {
-  id                  Int             @id @default(autoincrement())
-  purchase_invoice_id Int
-  item_id             Int
-  quantity            Decimal         @db.Decimal(15, 3)
-  unit_price          Decimal         @db.Decimal(15, 2)
-  total_price         Decimal         @db.Decimal(15, 2)
-  created_at          DateTime        @default(now()) @db.Timestamp(6)
-  item                Item            @relation(fields: [item_id], references: [id])
-  purchase_invoice    PurchaseInvoice @relation(fields: [purchase_invoice_id], references: [id], onDelete: Cascade)
-
-  @@index([purchase_invoice_id])
-  @@index([item_id])
-  @@map("purchase_invoice_items")
-}
-model SaleInvoice {
-  id              Int           @id @default(autoincrement())
-  invoice_number  String        @unique @db.VarChar(50)    // ✅ ADDED db.VarChar
-  customer_id     Int
-  customer        Customer      @relation(fields: [customer_id], references: [id], onDelete: Restrict)
-  admin_id        Int
-  admin           User          @relation(fields: [admin_id], references: [id], onDelete: Restrict)
-  invoice_date    DateTime      @default(now()) @db.Timestamp(6)  // ✅ ADDED db.Timestamp
-  due_date        DateTime?     @db.Timestamp(6)                  // ✅ ADDED db.Timestamp
-  subtotal        Decimal       @db.Decimal(15, 2)
-  tax             Decimal       @default(0) @db.Decimal(15, 2)
-  discount        Decimal       @default(0) @db.Decimal(15, 2)
-  total_amount    Decimal       @db.Decimal(15, 2)
-  received_amount Decimal       @default(0) @db.Decimal(15, 2)
-  payment_status  PaymentStatus @default(UNPAID)
-  notes           String?
-  created_at      DateTime      @default(now()) @db.Timestamp(6)  // ✅ ADDED db.Timestamp
-  updated_at      DateTime      @updatedAt @db.Timestamp(6)       // ✅ ADDED db.Timestamp
-
-  items          SaleInvoiceItem[]
-  receipts       Receipt[]
-  ledger_entries LedgerEntry[]
-
-  @@index([customer_id])      // ✅ ADDED
-  @@index([invoice_date])     // ✅ ADDED
-  @@index([payment_status])   // ✅ ADDED
-  @@map("sale_invoices")
-}
-model SaleInvoiceItem {
-  id                 Int             @id @default(autoincrement())
-  sale_invoice_id    Int
-  sale_invoice       SaleInvoice     @relation(fields: [sale_invoice_id], references: [id], onDelete: Cascade)
-  item_id            Int
-  item               Item            @relation(fields: [item_id], references: [id], onDelete: Restrict)
-  production_item_id Int?
-  production_item    ProductionItem? @relation(fields: [production_item_id], references: [id], onDelete: SetNull)
-  
-  // Snapshot fields
-  item_name          String          @db.VarChar(255)    // ✅ ADDED
-  serial_number      String?         @db.VarChar(100)    // ✅ ADDED
-  
-  // Pricing fields
-  quantity           Decimal         @db.Decimal(15, 3)
-  unit_price         Decimal         @db.Decimal(15, 2)
-  cost_price         Decimal         @db.Decimal(15, 2)  // ✅ ADDED
-  total_price        Decimal         @db.Decimal(15, 2)
-  profit             Decimal         @db.Decimal(15, 2)  // ✅ ADDED
-  
-  created_at         DateTime        @default(now()) @db.Timestamp(6)  // ✅ ADDED db.Timestamp
-
-  @@index([sale_invoice_id])
-  @@index([item_id])
-  @@index([production_item_id])   // ✅ ADDED
-  @@map("sale_invoice_items")
-}
-
-model Payment {
-  id                  Int              @id @default(autoincrement())
-  payment_number      String           @unique @db.VarChar(50)
-  supplier_id         Int
-  account_id          Int
-  admin_id            Int
-  amount              Decimal          @db.Decimal(15, 2)
-  payment_date        DateTime         @default(now()) @db.Timestamp(6)
-  purchase_invoice_id Int?
-  notes               String?
-  created_at          DateTime         @default(now()) @db.Timestamp(6)
-  updated_at          DateTime         @updatedAt @db.Timestamp(6)
-  ledger_entries      LedgerEntry[]
-  account             Account          @relation(fields: [account_id], references: [id])
-  admin               User             @relation(fields: [admin_id], references: [id])
-  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id])
-  supplier            Supplier         @relation(fields: [supplier_id], references: [id])
-
-  @@index([supplier_id])
-  @@index([account_id])
-  @@index([payment_date])
-  @@map("payments")
-}
-model Receipt {
-  id              Int          @id @default(autoincrement())
-  receipt_number  String       @unique @db.VarChar(50)     // ✅ ADDED db.VarChar
-  customer_id     Int
-  customer        Customer     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
-  account_id      Int
-  account         Account      @relation(fields: [account_id], references: [id], onDelete: Restrict)
-  admin_id        Int
-  admin           User         @relation(fields: [admin_id], references: [id], onDelete: Restrict)
-  amount          Decimal      @db.Decimal(15, 2)
-  receipt_date    DateTime     @default(now()) @db.Timestamp(6)  // ✅ ADDED db.Timestamp
-  sale_invoice_id Int?
-  sale_invoice    SaleInvoice? @relation(fields: [sale_invoice_id], references: [id], onDelete: SetNull)
-  notes           String?
-  created_at      DateTime     @default(now()) @db.Timestamp(6)  // ✅ ADDED db.Timestamp
-  updated_at      DateTime     @updatedAt @db.Timestamp(6)       // ✅ ADDED db.Timestamp
-
-  ledger_entries LedgerEntry[]
-
-  @@index([customer_id])      // ✅ ADDED
-  @@index([account_id])       // ✅ ADDED
-  @@index([receipt_date])     // ✅ ADDED
-  @@map("receipts")
-}
-
-model LedgerEntry {
-  id                  Int              @id @default(autoincrement())
-  entity_type         LedgerEntityType
-  supplier_id         Int?
-  customer_id         Int?
-  account_id          Int?
-  transaction_type    TransactionType
-  amount              Decimal          @db.Decimal(15, 2)
-  balance             Decimal          @db.Decimal(15, 2)
-  description         String
-  reference_number    String?          @db.VarChar(50)
-  transaction_date    DateTime         @default(now()) @db.Timestamp(6)
-  created_at          DateTime         @default(now()) @db.Timestamp(6)
-  purchase_invoice_id Int?
-  payment_id          Int?
-  receipt_id          Int?              // ✅ ADDED
-  expense_id          Int?
-  sale_invoice_id     Int?
-  sale_invoice        SaleInvoice?     @relation(fields: [sale_invoice_id], references: [id], onDelete: SetNull)
-  receipt             Receipt?          @relation(fields: [receipt_id], references: [id], onDelete: SetNull)  // ✅ ADDED
-  account             Account?         @relation(fields: [account_id], references: [id], onDelete: Cascade)
-  customer            Customer?        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  expense             Expense?         @relation(fields: [expense_id], references: [id])
-  payment             Payment?         @relation(fields: [payment_id], references: [id])
-  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id])
-  supplier            Supplier?        @relation(fields: [supplier_id], references: [id], onDelete: Cascade)
-
-  @@index([supplier_id])
-  @@index([customer_id])
-  @@index([account_id])
-  @@index([transaction_date])
-  @@index([receipt_id])   
-  @@map("ledger_entries")
-}
-
-model Recipe {
-  id               Int                @id @default(autoincrement())
-  final_product_id Int                @unique
-  name             String             @db.VarChar(255)
-  description      String?
-  created_at       DateTime           @default(now()) @db.Timestamp(6)
-  updated_at       DateTime           @updatedAt @db.Timestamp(6)
-  productions      Production[]
-  ingredients      RecipeIngredient[]
-  final_product    Item               @relation("RecipeFinalProduct", fields: [final_product_id], references: [id])
-
-  @@map("recipes")
-}
-
-model RecipeIngredient {
-  id         Int      @id @default(autoincrement())
-  recipe_id  Int
-  item_id    Int
-  quantity   Decimal  @db.Decimal(15, 2)
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  updated_at DateTime @updatedAt @db.Timestamp(6)
-  item       Item     @relation("RecipeIngredientItem", fields: [item_id], references: [id])
-  recipe     Recipe   @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
-
-  @@unique([recipe_id, item_id])
-  @@index([recipe_id])
-  @@index([item_id])
-  @@map("recipe_ingredients")
-}
-
-model Production {
-  id                     Int                    @id @default(autoincrement())
-  batch_number           String                 @unique @db.VarChar(50)
-  recipe_id              Int
-  admin_id               Int
-  quantity               Int
-  status                 ProductionStatus       @default(DRAFT)
-  total_cost             Decimal                @default(0) @db.Decimal(15, 2)
-  cost_per_unit          Decimal                @default(0) @db.Decimal(15, 2)
-  start_date             DateTime?              @db.Timestamp(6)
-  completion_date        DateTime?              @db.Timestamp(6)
-  notes                  String?
-  created_at             DateTime               @default(now()) @db.Timestamp(6)
-  updated_at             DateTime               @updatedAt @db.Timestamp(6)
-  production_ingredients ProductionIngredient[]
-  production_items       ProductionItem[]
-  admin                  User                   @relation(fields: [admin_id], references: [id])
-  recipe                 Recipe                 @relation(fields: [recipe_id], references: [id])
-  stock_adjustments      StockAdjustment[]
-
-  @@index([recipe_id])
-  @@index([status])
-  @@map("productions")
-}
-
-model ProductionIngredient {
-  id             Int        @id @default(autoincrement())
-  production_id  Int
-  item_id        Int
-  quantity       Decimal    @db.Decimal(15, 2)
-  is_from_recipe Boolean    @default(true)
-  created_at     DateTime   @default(now()) @db.Timestamp(6)
-  updated_at     DateTime   @updatedAt @db.Timestamp(6)
-  item           Item       @relation("ProductionIngredientItem", fields: [item_id], references: [id])
-  production     Production @relation(fields: [production_id], references: [id], onDelete: Cascade)
-
-  @@unique([production_id, item_id])
-  @@index([item_id])
-  @@index([production_id])
-  @@map("production_ingredients")
-}
-
-model ProductionItem {
-  id            Int        @id @default(autoincrement())
-  production_id Int
-  item_id       Int
-  serial_number String     @unique @db.VarChar(100)
-  cost_price    Decimal    @db.Decimal(15, 2)
-  is_sold       Boolean    @default(false)
-  created_at    DateTime   @default(now()) @db.Timestamp(6)
-  updated_at    DateTime   @updatedAt @db.Timestamp(6)
-  item          Item       @relation("ProductionFinalItem", fields: [item_id], references: [id])
-  production    Production @relation(fields: [production_id], references: [id], onDelete: Cascade)
-  sale_invoice_items SaleInvoiceItem[]
-  @@index([production_id])
-  @@index([item_id])
-  @@index([serial_number])
-  @@index([is_sold])
-  @@map("production_items")
-}
-
-model ExpenseCategory {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
-  description String?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  expenses    Expense[]
-
-  @@map("expense_categories")
-}
-
-model Expense {
-  id             Int             @id @default(autoincrement())
-  category_id    Int
-  account_id     Int
-  admin_id       Int
-  amount         Decimal         @db.Decimal(15, 2)
-  description    String
-  expense_date   DateTime        @default(now())
-  notes          String?
-  receipt_image  String?
-  created_at     DateTime        @default(now())
-  updated_at     DateTime        @updatedAt
-  account        Account         @relation(fields: [account_id], references: [id])
-  admin          User            @relation(fields: [admin_id], references: [id])
-  category       ExpenseCategory @relation(fields: [category_id], references: [id])
-  ledger_entries LedgerEntry[]
-
-  @@map("expenses")
-}
+// ═══════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════
 
 enum UserRole {
   ADMIN
@@ -481,4 +53,565 @@ enum ProductionStatus {
   DRAFT
   IN_PROCESS
   DONE
+}
+
+enum RepairStatus {
+  PENDING      // Repair not started
+  IN_PROGRESS  // Being repaired
+  COMPLETED    // Repair done
+  DELIVERED    // Returned to customer
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODELS
+// ═══════════════════════════════════════════════════════════
+
+model User {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique @db.VarChar(255)
+  password   String   @db.VarChar(255)
+  name       String   @db.VarChar(255)
+  phone      String?  @db.VarChar(50)
+  role       UserRole @default(ADMIN)
+  is_active  Boolean  @default(true) @map("is_active")
+  created_at DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updated_at DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  stock_adjustments StockAdjustment[]
+  sale_invoices     SaleInvoice[]
+  purchase_invoices PurchaseInvoice[]
+  payments          Payment[]
+  receipts          Receipt[]
+  productions       Production[]
+  expenses          Expense[]
+  repair_invoices   RepairInvoice[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Supplier {
+  id              Int      @id @default(autoincrement())
+  name            String
+  company_name    String?  @map("company_name")
+  phone           String?
+  address         String?
+  opening_balance Decimal  @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  current_balance Decimal  @default(0) @map("current_balance") @db.Decimal(15, 2)
+  created_at      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updated_at      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  purchase_invoices PurchaseInvoice[]
+  payments          Payment[]
+  ledger_entries    LedgerEntry[]
+
+  @@map("suppliers")
+}
+
+model Customer {
+  id              Int      @id @default(autoincrement())
+  name            String
+  company_name    String?  @map("company_name")
+  phone           String?
+  address         String?
+  opening_balance Decimal  @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  current_balance Decimal  @default(0) @map("current_balance") @db.Decimal(15, 2)
+  created_at      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updated_at      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  ledger_entries  LedgerEntry[]
+  sale_invoices   SaleInvoice[]
+  receipts        Receipt[]
+  repair_invoices RepairInvoice[]
+
+  @@map("customers")
+}
+
+model Category {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(100)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  items Item[]
+
+  @@map("categories")
+}
+
+model Item {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  item_type   ItemType
+  unit_type   UnitType @default(PCS)
+  category_id Int
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  quantity    Decimal  @default(0) @db.Decimal(15, 3)
+  avg_price   Decimal  @default(0) @db.Decimal(15, 2)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  stock_adjustments      StockAdjustment[]
+  purchase_invoice_items PurchaseInvoiceItem[]
+  sale_invoice_items     SaleInvoiceItem[]
+  recipe                 Recipe?               @relation("RecipeFinalProduct")
+  recipe_ingredients     RecipeIngredient[]    @relation("RecipeIngredientItem")
+  production_items       ProductionItem[]      @relation("ProductionFinalItem")
+  production_ingredients ProductionIngredient[] @relation("ProductionIngredientItem")
+  repaired_items         RepairInvoice[]       @relation("RepairedItem")
+  repair_invoice_items   RepairInvoiceItem[]
+
+  @@unique([category_id, name])
+  @@index([category_id])
+  @@index([item_type])
+  @@map("items")
+}
+
+model StockAdjustment {
+  id              Int      @id @default(autoincrement())
+  item_id         Int
+  item            Item     @relation(fields: [item_id], references: [id])
+  admin_id        Int
+  admin           User     @relation(fields: [admin_id], references: [id])
+  quantity        Decimal  @db.Decimal(15, 3)
+  avg_price       Decimal  @db.Decimal(15, 2)
+  reason          String
+  notes           String?
+  adjustment_date DateTime @default(now())
+  created_at      DateTime @default(now())
+
+  purchase_invoice_id Int?
+  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
+  production_id       Int?
+  production          Production?      @relation(fields: [production_id], references: [id], onDelete: SetNull)
+  repair_invoice_id   Int?
+  repair_invoice      RepairInvoice?   @relation(fields: [repair_invoice_id], references: [id], onDelete: SetNull)
+
+  @@map("stock_adjustments")
+}
+
+model Account {
+  id              Int         @id @default(autoincrement())
+  name            String      @db.VarChar(100)
+  account_type    AccountType
+  account_number  String?     @db.VarChar(50)
+  bank_name       String?     @db.VarChar(100)
+  opening_balance Decimal     @default(0) @db.Decimal(15, 2)
+  current_balance Decimal     @default(0) @db.Decimal(15, 2)
+  created_at      DateTime    @default(now()) @db.Timestamp(6)
+  updated_at      DateTime    @updatedAt @db.Timestamp(6)
+
+  payments       Payment[]
+  receipts       Receipt[]
+  ledger_entries LedgerEntry[]
+  expenses       Expense[]
+
+  @@map("accounts")
+}
+
+model PurchaseInvoice {
+  id             Int           @id @default(autoincrement())
+  invoice_number String        @unique @db.VarChar(50)
+  supplier_id    Int
+  supplier       Supplier      @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
+  admin_id       Int
+  admin          User          @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  invoice_date   DateTime      @default(now()) @db.Timestamp(6)
+  due_date       DateTime?     @db.Timestamp(6)
+  subtotal       Decimal       @db.Decimal(15, 2)
+  tax            Decimal       @default(0) @db.Decimal(15, 2)
+  discount       Decimal       @default(0) @db.Decimal(15, 2)
+  total_amount   Decimal       @db.Decimal(15, 2)
+  paid_amount    Decimal       @default(0) @db.Decimal(15, 2)
+  payment_status PaymentStatus @default(UNPAID)
+  notes          String?
+  created_at     DateTime      @default(now()) @db.Timestamp(6)
+  updated_at     DateTime      @updatedAt @db.Timestamp(6)
+
+  items             PurchaseInvoiceItem[]
+  payments          Payment[]
+  stock_adjustments StockAdjustment[]
+  ledger_entries    LedgerEntry[]
+
+  @@index([supplier_id])
+  @@index([invoice_date])
+  @@index([payment_status])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceItem {
+  id                  Int             @id @default(autoincrement())
+  purchase_invoice_id Int
+  purchase_invoice    PurchaseInvoice @relation(fields: [purchase_invoice_id], references: [id], onDelete: Cascade)
+  item_id             Int
+  item                Item            @relation(fields: [item_id], references: [id], onDelete: Restrict)
+  quantity            Decimal         @db.Decimal(15, 3)
+  unit_price          Decimal         @db.Decimal(15, 2)
+  total_price         Decimal         @db.Decimal(15, 2)
+  created_at          DateTime        @default(now()) @db.Timestamp(6)
+
+  @@index([purchase_invoice_id])
+  @@index([item_id])
+  @@map("purchase_invoice_items")
+}
+
+model SaleInvoice {
+  id              Int           @id @default(autoincrement())
+  invoice_number  String        @unique @db.VarChar(50)
+  customer_id     Int
+  customer        Customer      @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  admin_id        Int
+  admin           User          @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  invoice_date    DateTime      @default(now()) @db.Timestamp(6)
+  due_date        DateTime?     @db.Timestamp(6)
+  subtotal        Decimal       @db.Decimal(15, 2)
+  tax             Decimal       @default(0) @db.Decimal(15, 2)
+  discount        Decimal       @default(0) @db.Decimal(15, 2)
+  total_amount    Decimal       @db.Decimal(15, 2)
+  received_amount Decimal       @default(0) @db.Decimal(15, 2)
+  payment_status  PaymentStatus @default(UNPAID)
+  notes           String?
+  created_at      DateTime      @default(now()) @db.Timestamp(6)
+  updated_at      DateTime      @updatedAt @db.Timestamp(6)
+
+  items          SaleInvoiceItem[]
+  receipts       Receipt[]
+  ledger_entries LedgerEntry[]
+
+  @@index([customer_id])
+  @@index([invoice_date])
+  @@index([payment_status])
+  @@map("sale_invoices")
+}
+
+model SaleInvoiceItem {
+  id                 Int             @id @default(autoincrement())
+  sale_invoice_id    Int
+  sale_invoice       SaleInvoice     @relation(fields: [sale_invoice_id], references: [id], onDelete: Cascade)
+  item_id            Int
+  item               Item            @relation(fields: [item_id], references: [id], onDelete: Restrict)
+  production_item_id Int?
+  production_item    ProductionItem? @relation(fields: [production_item_id], references: [id], onDelete: SetNull)
+
+  item_name      String  @db.VarChar(255)
+  serial_number  String? @db.VarChar(100)
+  quantity       Decimal @db.Decimal(15, 3)
+  unit_price     Decimal @db.Decimal(15, 2)
+  cost_price     Decimal @db.Decimal(15, 2)
+  total_price    Decimal @db.Decimal(15, 2)
+  profit         Decimal @db.Decimal(15, 2)
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([sale_invoice_id])
+  @@index([item_id])
+  @@index([production_item_id])
+  @@map("sale_invoice_items")
+}
+
+model Payment {
+  id                  Int              @id @default(autoincrement())
+  payment_number      String           @unique @db.VarChar(50)
+  supplier_id         Int
+  supplier            Supplier         @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
+  account_id          Int
+  account             Account          @relation(fields: [account_id], references: [id], onDelete: Restrict)
+  admin_id            Int
+  admin               User             @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  amount              Decimal          @db.Decimal(15, 2)
+  payment_date        DateTime         @default(now()) @db.Timestamp(6)
+  purchase_invoice_id Int?
+  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
+  notes               String?
+  created_at          DateTime         @default(now()) @db.Timestamp(6)
+  updated_at          DateTime         @updatedAt @db.Timestamp(6)
+
+  ledger_entries LedgerEntry[]
+
+  @@index([supplier_id])
+  @@index([account_id])
+  @@index([payment_date])
+  @@map("payments")
+}
+
+model Receipt {
+  id                Int          @id @default(autoincrement())
+  receipt_number    String       @unique @db.VarChar(50)
+  customer_id       Int
+  customer          Customer     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  account_id        Int
+  account           Account      @relation(fields: [account_id], references: [id], onDelete: Restrict)
+  admin_id          Int
+  admin             User         @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  amount            Decimal      @db.Decimal(15, 2)
+  receipt_date      DateTime     @default(now()) @db.Timestamp(6)
+  sale_invoice_id   Int?
+  sale_invoice      SaleInvoice? @relation(fields: [sale_invoice_id], references: [id], onDelete: SetNull)
+  repair_invoice_id Int?
+  repair_invoice    RepairInvoice? @relation(fields: [repair_invoice_id], references: [id], onDelete: SetNull)
+  notes             String?
+  created_at        DateTime     @default(now()) @db.Timestamp(6)
+  updated_at        DateTime     @updatedAt @db.Timestamp(6)
+
+  ledger_entries LedgerEntry[]
+
+  @@index([customer_id])
+  @@index([account_id])
+  @@index([receipt_date])
+  @@map("receipts")
+}
+
+model LedgerEntry {
+  id                  Int              @id @default(autoincrement())
+  entity_type         LedgerEntityType
+  supplier_id         Int?
+  supplier            Supplier?        @relation(fields: [supplier_id], references: [id], onDelete: Cascade)
+  customer_id         Int?
+  customer            Customer?        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  account_id          Int?
+  account             Account?         @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  transaction_type    TransactionType
+  amount              Decimal          @db.Decimal(15, 2)
+  balance             Decimal          @db.Decimal(15, 2)
+  description         String
+  reference_number    String?          @db.VarChar(50)
+  transaction_date    DateTime         @default(now()) @db.Timestamp(6)
+  purchase_invoice_id Int?
+  purchase_invoice    PurchaseInvoice? @relation(fields: [purchase_invoice_id], references: [id], onDelete: SetNull)
+  sale_invoice_id     Int?
+  sale_invoice        SaleInvoice?     @relation(fields: [sale_invoice_id], references: [id], onDelete: SetNull)
+  payment_id          Int?
+  payment             Payment?         @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+  receipt_id          Int?
+  receipt             Receipt?         @relation(fields: [receipt_id], references: [id], onDelete: SetNull)
+  repair_invoice_id   Int?
+  repair_invoice      RepairInvoice?   @relation(fields: [repair_invoice_id], references: [id], onDelete: SetNull)
+  expense_id          Int?
+  expense             Expense?         @relation(fields: [expense_id], references: [id], onDelete: SetNull)
+  created_at          DateTime         @default(now()) @db.Timestamp(6)
+
+  @@index([supplier_id])
+  @@index([customer_id])
+  @@index([account_id])
+  @@index([transaction_date])
+  @@index([receipt_id])
+  @@map("ledger_entries")
+}
+
+model Recipe {
+  id               Int      @id @default(autoincrement())
+  final_product_id Int      @unique
+  final_product    Item     @relation("RecipeFinalProduct", fields: [final_product_id], references: [id], onDelete: Restrict)
+  name             String   @db.VarChar(255)
+  description      String?
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+  updated_at       DateTime @updatedAt @db.Timestamp(6)
+
+  ingredients RecipeIngredient[]
+  productions Production[]
+
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id         Int      @id @default(autoincrement())
+  recipe_id  Int
+  recipe     Recipe   @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
+  item_id    Int
+  item       Item     @relation("RecipeIngredientItem", fields: [item_id], references: [id], onDelete: Restrict)
+  quantity   Decimal  @db.Decimal(15, 3)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  @@unique([recipe_id, item_id])
+  @@index([recipe_id])
+  @@index([item_id])
+  @@map("recipe_ingredients")
+}
+
+model Production {
+  id              Int              @id @default(autoincrement())
+  batch_number    String           @unique @db.VarChar(50)
+  recipe_id       Int
+  recipe          Recipe           @relation(fields: [recipe_id], references: [id], onDelete: Restrict)
+  admin_id        Int
+  admin           User             @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  quantity        Int
+  status          ProductionStatus @default(DRAFT)
+  total_cost      Decimal          @default(0) @db.Decimal(15, 2)
+  cost_per_unit   Decimal          @default(0) @db.Decimal(15, 2)
+  start_date      DateTime?        @db.Timestamp(6)
+  completion_date DateTime?        @db.Timestamp(6)
+  notes           String?
+  created_at      DateTime         @default(now()) @db.Timestamp(6)
+  updated_at      DateTime         @updatedAt @db.Timestamp(6)
+
+  production_ingredients ProductionIngredient[]
+  production_items       ProductionItem[]
+  stock_adjustments      StockAdjustment[]
+
+  @@index([recipe_id])
+  @@index([status])
+  @@map("productions")
+}
+
+model ProductionIngredient {
+  id             Int        @id @default(autoincrement())
+  production_id  Int
+  production     Production @relation(fields: [production_id], references: [id], onDelete: Cascade)
+  item_id        Int
+  item           Item       @relation("ProductionIngredientItem", fields: [item_id], references: [id], onDelete: Restrict)
+  quantity       Decimal    @db.Decimal(15, 3)
+  is_from_recipe Boolean    @default(true)
+  created_at     DateTime   @default(now()) @db.Timestamp(6)
+  updated_at     DateTime   @updatedAt @db.Timestamp(6)
+
+  @@unique([production_id, item_id])
+  @@index([production_id])
+  @@index([item_id])
+  @@map("production_ingredients")
+}
+
+model ProductionItem {
+  id             Int        @id @default(autoincrement())
+  production_id  Int
+  production     Production @relation(fields: [production_id], references: [id], onDelete: Cascade)
+  item_id        Int
+  item           Item       @relation("ProductionFinalItem", fields: [item_id], references: [id], onDelete: Restrict)
+  serial_number  String     @unique @db.VarChar(100)
+  cost_price     Decimal    @db.Decimal(15, 2)
+  is_sold        Boolean    @default(false)
+  created_at     DateTime   @default(now()) @db.Timestamp(6)
+  updated_at     DateTime   @updatedAt @db.Timestamp(6)
+
+  sale_invoice_items SaleInvoiceItem[]
+  repair_invoices    RepairInvoice[]
+
+  @@index([production_id])
+  @@index([item_id])
+  @@index([serial_number])
+  @@index([is_sold])
+  @@map("production_items")
+}
+
+model RepairInvoice {
+  id              Int           @id @default(autoincrement())
+  invoice_number  String        @unique @db.VarChar(50)
+  customer_id     Int
+  customer        Customer      @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  admin_id        Int
+  admin           User          @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+
+  // Item being repaired - SIMPLIFIED
+  item_type       ItemType?     // FINAL or RAW (nullable for external)
+
+  // If FINAL product
+  production_item_id Int?
+  production_item    ProductionItem? @relation(fields: [production_item_id], references: [id], onDelete: SetNull)
+  serial_number      String?     @db.VarChar(100)
+
+  // If RAW item from inventory
+  item_id         Int?
+  item            Item?         @relation("RepairedItem", fields: [item_id], references: [id], onDelete: SetNull)
+
+  // If external item
+  item_description String?     @db.VarChar(255)
+
+  // FOC flag - INDEPENDENT of item type
+  is_foc          Boolean       @default(false)
+
+  repair_status   RepairStatus  @default(PENDING)
+
+  // Dates
+  received_date   DateTime      @default(now()) @db.Timestamp(6)
+  repair_date     DateTime?     @db.Timestamp(6)
+  delivery_date   DateTime?     @db.Timestamp(6)
+
+  // Costs
+  parts_cost      Decimal       @default(0) @db.Decimal(15, 2)
+  service_charges Decimal       @default(0) @db.Decimal(15, 2)
+  total_amount    Decimal       @db.Decimal(15, 2)
+
+  // Payment (only if NOT FOC)
+  received_amount Decimal       @default(0) @db.Decimal(15, 2)
+  payment_status  PaymentStatus @default(UNPAID)
+
+  notes           String?
+  technician_notes String?
+
+  created_at      DateTime      @default(now()) @db.Timestamp(6)
+  updated_at      DateTime      @updatedAt @db.Timestamp(6)
+
+  repair_items    RepairInvoiceItem[]
+  receipts        Receipt[]
+  ledger_entries  LedgerEntry[]
+  stock_adjustments StockAdjustment[]
+
+  @@index([customer_id])
+  @@index([is_foc])
+  @@index([repair_status])
+  @@index([received_date])
+  @@index([payment_status])
+  @@map("repair_invoices")
+}
+
+model RepairInvoiceItem {
+  id                Int           @id @default(autoincrement())
+  repair_invoice_id Int
+  repair_invoice    RepairInvoice @relation(fields: [repair_invoice_id], references: [id], onDelete: Cascade)
+
+  // Item used (can be from inventory or just description)
+  item_id           Int?
+  item              Item?         @relation(fields: [item_id], references: [id], onDelete: Restrict)
+
+  description       String        @db.VarChar(255)
+  quantity          Decimal       @db.Decimal(15, 3)
+  unit_price        Decimal       @db.Decimal(15, 2)  // Charged to customer
+  total_price       Decimal       @db.Decimal(15, 2)
+
+  // Cost tracking
+  cost_price        Decimal?      @db.Decimal(15, 2)  // Our actual cost
+
+  // Bush flag - HIDDEN from customer  (included in total_amount)
+  is_bush           Boolean       @default(false)
+
+  created_at        DateTime      @default(now()) @db.Timestamp(6)
+
+  @@index([repair_invoice_id])
+  @@index([item_id])
+  @@map("repair_invoice_items")
+}
+
+model ExpenseCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  updated_at  DateTime @updatedAt @db.Timestamp(6)
+
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id            Int             @id @default(autoincrement())
+  category_id   Int
+  category      ExpenseCategory @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  account_id    Int
+  account       Account         @relation(fields: [account_id], references: [id], onDelete: Restrict)
+  admin_id      Int
+  admin         User            @relation(fields: [admin_id], references: [id], onDelete: Restrict)
+  amount        Decimal         @db.Decimal(15, 2)
+  description   String
+  expense_date  DateTime        @default(now()) @db.Timestamp(6)
+  notes         String?
+  receipt_image String?
+  created_at    DateTime        @default(now()) @db.Timestamp(6)
+  updated_at    DateTime        @updatedAt @db.Timestamp(6)
+
+  ledger_entries LedgerEntry[]
+
+  @@index([category_id])
+  @@index([account_id])
+  @@index([expense_date])
+  @@map("expenses")
 }
