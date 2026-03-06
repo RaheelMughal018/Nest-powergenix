@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   ItemType,
   LedgerEntityType,
@@ -33,9 +29,7 @@ export class RepairInvoiceService {
       where: { invoice_number: { startsWith: prefix } },
       orderBy: { invoice_number: 'desc' },
     });
-    const next = last
-      ? parseInt(last.invoice_number.replace(prefix, ''), 10) + 1
-      : 1;
+    const next = last ? parseInt(last.invoice_number.replace(prefix, ''), 10) + 1 : 1;
     return `${prefix}${next.toString().padStart(4, '0')}`;
   }
 
@@ -54,24 +48,18 @@ export class RepairInvoiceService {
     const isFOC = dto.is_foc === true;
     if (isFOC) {
       if (dto.payment_status || dto.received_amount || dto.account_id) {
-        throw new BadRequestException(
-          'Payment fields are not allowed for FOC repair',
-        );
+        throw new BadRequestException('Payment fields are not allowed for FOC repair');
       }
     } else {
       const isPayment =
-        dto.payment_status === PaymentStatus.PAID ||
-        dto.payment_status === PaymentStatus.PARTIAL;
+        dto.payment_status === PaymentStatus.PAID || dto.payment_status === PaymentStatus.PARTIAL;
       if (isPayment) {
         if (dto.received_amount == null || dto.received_amount < 0) {
           throw new BadRequestException(
             'received_amount is required when payment_status is PAID or PARTIAL',
           );
         }
-        if (
-          dto.payment_status === PaymentStatus.PAID &&
-          dto.received_amount <= 0
-        ) {
+        if (dto.payment_status === PaymentStatus.PAID && dto.received_amount <= 0) {
           throw new BadRequestException(
             'received_amount must be greater than 0 when payment_status is PAID',
           );
@@ -90,9 +78,30 @@ export class RepairInvoiceService {
       }
     }
 
-    const receivedDate = dto.received_date
-      ? new Date(dto.received_date)
-      : new Date();
+    const receivedDate = dto.received_date ? new Date(dto.received_date) : new Date();
+
+    // If serial_number given, resolve production item and set production_item_id + item_type
+    let productionItemId: number | null = dto.production_item_id ?? null;
+    let itemType: ItemType | null = dto.item_type ?? null;
+    const serialNumberTrimmed = dto.serial_number?.trim();
+    if (serialNumberTrimmed) {
+      const productionItem = await this.prisma.productionItem.findUnique({
+        where: { serial_number: serialNumberTrimmed },
+        select: { id: true, item_id: true, item: { select: { item_type: true } } },
+      });
+      if (!productionItem) {
+        throw new NotFoundException(
+          `Production item with serial number "${serialNumberTrimmed}" not found`,
+        );
+      }
+      productionItemId = productionItem.id;
+      itemType = productionItem.item.item_type;
+      if (dto.production_item_id != null && dto.production_item_id !== productionItemId) {
+        throw new BadRequestException(
+          `Serial "${serialNumberTrimmed}" belongs to production item ID ${productionItem.id}, not ${dto.production_item_id}`,
+        );
+      }
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       let partsCost = new Decimal(0);
@@ -147,9 +156,7 @@ export class RepairInvoiceService {
           receivedAmount = dto.received_amount;
         }
         if (receivedAmount > totalAmount) {
-          throw new BadRequestException(
-            'received_amount cannot exceed total_amount',
-          );
+          throw new BadRequestException('received_amount cannot exceed total_amount');
         }
       }
 
@@ -160,10 +167,10 @@ export class RepairInvoiceService {
           invoice_number: invoiceNumber,
           customer_id: dto.customer_id,
           admin_id: adminId,
-          item_type: dto.item_type ?? null,
-          production_item_id: dto.production_item_id ?? null,
-          serial_number: dto.serial_number?.trim() || null,
-          item_id: dto.item_id ?? null,
+          item_type: itemType,
+          production_item_id: productionItemId,
+          serial_number: serialNumberTrimmed || null,
+          item_id: productionItemId == null ? (dto.item_id ?? null) : null,
           item_description: dto.item_description?.trim() || null,
           is_foc: isFOC,
           repair_status: RepairStatus.PENDING,
@@ -187,9 +194,7 @@ export class RepairInvoiceService {
           const item = await tx.item.findUnique({
             where: { id: row.item_id },
           });
-          costPrice = item
-            ? new Decimal(item.avg_price.toString())
-            : null;
+          costPrice = item ? new Decimal(item.avg_price.toString()) : null;
         }
         await tx.repairInvoiceItem.create({
           data: {
@@ -290,26 +295,20 @@ export class RepairInvoiceService {
     return this.findOne(result.id);
   }
 
-  private async generateReceiptNumber(
-    tx: { receipt: { findFirst: (args: unknown) => Promise<{ receipt_number: string } | null> } },
-  ): Promise<string> {
+  private async generateReceiptNumber(tx: {
+    receipt: { findFirst: (args: unknown) => Promise<{ receipt_number: string } | null> };
+  }): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = `REC-${year}-`;
     const last = await tx.receipt.findFirst({
       where: { receipt_number: { startsWith: prefix } },
       orderBy: { receipt_number: 'desc' },
     } as Parameters<typeof tx.receipt.findFirst>[0]);
-    const next = last
-      ? parseInt(last.receipt_number.replace(prefix, ''), 10) + 1
-      : 1;
+    const next = last ? parseInt(last.receipt_number.replace(prefix, ''), 10) + 1 : 1;
     return `${prefix}${next.toString().padStart(4, '0')}`;
   }
 
-  async updateStatus(
-    id: number,
-    dto: UpdateRepairStatusDto,
-    adminId: number,
-  ) {
+  async updateStatus(id: number, dto: UpdateRepairStatusDto, adminId: number) {
     const repair = await this.prisma.repairInvoice.findUnique({
       where: { id },
       include: {
@@ -377,9 +376,7 @@ export class RepairInvoiceService {
       where: { id },
       data: updateData,
     });
-    this.logger.log(
-      `Repair invoice ${repair.invoice_number} status: ${current} → ${next}`,
-    );
+    this.logger.log(`Repair invoice ${repair.invoice_number} status: ${current} → ${next}`);
     return this.findOne(updated.id);
   }
 
@@ -412,7 +409,9 @@ export class RepairInvoiceService {
       is_foc?: boolean;
       repair_status?: RepairStatus;
     } = {};
-    if (filters?.customer_id) where.customer_id = filters.customer_id;
+    //localhost:3333/api/v1/repair-invoices/2
+
+    http: if (filters?.customer_id) where.customer_id = filters.customer_id;
     if (filters?.is_foc !== undefined) where.is_foc = filters.is_foc;
     if (filters?.repair_status) where.repair_status = filters.repair_status;
 
@@ -424,7 +423,7 @@ export class RepairInvoiceService {
         orderBy: { id: 'desc' },
         include: {
           customer: { select: { id: true, name: true } },
-          repair_items: true,
+          repair_items: { include: { item: { select: { id: true, name: true } } } },
         },
       }),
       this.prisma.repairInvoice.count({ where }),
@@ -467,6 +466,7 @@ export class RepairInvoiceService {
       total_price: unknown;
       cost_price: unknown;
       is_bush: boolean;
+      item?: { name: string } | null;
     }>;
     customer?: { name: string };
   }) {
@@ -495,12 +495,13 @@ export class RepairInvoiceService {
       items: repair.repair_items.map((i) => ({
         id: i.id,
         item_id: i.item_id,
+        item_name: i.item?.name ?? null,
         description: i.description,
         quantity: i.quantity,
         unit_price: i.unit_price,
         total_price: i.total_price,
         cost_price: i.cost_price,
-        is_bush: i.is_bush,
+        inventory_count: !i.is_bush,
       })),
     };
   }

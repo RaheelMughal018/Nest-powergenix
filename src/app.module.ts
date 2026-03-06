@@ -18,6 +18,7 @@ import { ProductionModule } from './production/production.module';
 import { RepairInvoiceModule } from './repair-invoice/repair-invoice.module';
 import { ExpenseCategoryModule } from './expense-category/expense-category.module';
 import { ExpenseModule } from './expense/expense.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { DatabaseModule } from './common/database/database.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -56,6 +57,7 @@ import securityConfig from './config/security.config';
     RepairInvoiceModule,
     ExpenseCategoryModule,
     ExpenseModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

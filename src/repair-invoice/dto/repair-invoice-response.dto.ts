@@ -8,6 +8,9 @@ export class RepairInvoiceItemResponseDto {
   @ApiPropertyOptional()
   item_id?: number | null;
 
+  @ApiPropertyOptional({ description: 'Item name (when item_id is set)' })
+  item_name?: string | null;
+
   @ApiProperty()
   description: string;
 
@@ -23,8 +26,10 @@ export class RepairInvoiceItemResponseDto {
   @ApiPropertyOptional()
   cost_price?: number | string | null;
 
-  @ApiProperty({ description: 'If true: included in total but no stock deduction' })
-  is_bush: boolean;
+  @ApiProperty({
+    description: 'True = counted in inventory (stock deducted). False = not counted (e.g. bush/labor).',
+  })
+  inventory_count: boolean;
 }
 
 export class RepairInvoiceResponseDto {
