@@ -24,13 +24,13 @@ export class PaginationDto {
     description: 'Number of items per page',
     example: 10,
     minimum: 1,
-    maximum: 100,
+    maximum: 100000,
     default: 10,
   })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(100000)
   @IsOptional()
   limit?: number = 10;
 
