@@ -9,6 +9,7 @@ import {
   ValidateNested,
   MaxLength,
   Min,
+  IsNumber,
 } from 'class-validator';
 import { RecipeIngredientDto } from './recipe-ingredient.dto';
 
@@ -27,7 +28,8 @@ export class CreateRecipeDto {
 
   @ApiProperty({
     example: 1,
-    description: 'Final product item ID (must be ItemType.FINAL). One item can have at most one recipe.',
+    description:
+      'Final product item ID (must be ItemType.FINAL). One item can have at most one recipe.',
   })
   @Type(() => Number)
   @IsInt()
@@ -36,10 +38,22 @@ export class CreateRecipeDto {
 
   @ApiProperty({
     type: [RecipeIngredientDto],
-    description: 'Ingredients: quantity per unit of final product. Cost is calculated dynamically from current item avg_price.',
+    description:
+      'Ingredients: quantity per unit of final product. Cost is calculated dynamically from current item avg_price.',
   })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RecipeIngredientDto)
   ingredients: RecipeIngredientDto[];
+
+  @ApiPropertyOptional({
+    example: 1000,
+    description:
+      'Extra expenses per unit (e.g. labour, electricity) added on top of ingredient cost.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  extra_expenses?: number;
 }

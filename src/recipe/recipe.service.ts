@@ -72,6 +72,7 @@ export class RecipeService {
         name: dto.name.trim(),
         description: dto.description?.trim() ?? null,
         final_product_id: dto.final_product_id,
+        extra_expenses: dto.extra_expenses ?? 0,
         ingredients: {
           create: dto.ingredients.map((ing) => ({
             item_id: ing.item_id,
@@ -171,6 +172,11 @@ export class RecipeService {
       });
     }
 
+    if (recipe.extra_expenses) {
+      const extra = new Decimal(recipe.extra_expenses.toString());
+      cost = cost.add(extra);
+    }
+
     return {
       cost_per_unit: cost.toNumber(),
       breakdown,
@@ -214,6 +220,7 @@ export class RecipeService {
         data: {
           ...(dto.name !== undefined && { name: dto.name.trim() }),
           ...(dto.description !== undefined && { description: dto.description?.trim() ?? null }),
+          ...(dto.extra_expenses !== undefined && { extra_expenses: dto.extra_expenses }),
           ...(dto.ingredients !== undefined &&
             dto.ingredients.length > 0 && {
               ingredients: {

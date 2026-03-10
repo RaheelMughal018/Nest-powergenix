@@ -6,6 +6,8 @@ import {
   IsArray,
   ValidateNested,
   MaxLength,
+  IsNumber,
+  Min,
 } from 'class-validator';
 import { RecipeIngredientDto } from './recipe-ingredient.dto';
 
@@ -31,4 +33,15 @@ export class UpdateRecipeDto {
   @ValidateNested({ each: true })
   @Type(() => RecipeIngredientDto)
   ingredients?: RecipeIngredientDto[];
+
+  @ApiPropertyOptional({
+    example: 1000,
+    description:
+      'Extra expenses per unit (e.g. labour, electricity) added on top of ingredient cost.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  extra_expenses?: number;
 }
